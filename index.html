@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>从夯到拉排行</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {}
+
+    .list {}
+
+    .list_item {
+      display: flex;
+      border: 1px solid #ccc;
+      min-height: 100px;
+    }
+
+    .list_item_label {
+      width: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-right: 1px solid #ccc;
+    }
+
+    .list_item_content {
+      flex: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      min-height: 90px;
+    }
+
+    .list_item_content.drag-over {
+      background-color: #e8f4f8;
+      border: 2px dashed #4a90d9;
+    }
+
+    .img {
+      gap: 10px;
+    }
+
+    .imgs img {
+      width: 100px;
+      height: 100px;
+      cursor: move;
+      margin: 5px;
+    }
+
+    .imgs img:hover {
+      opacity: 0.7;
+    }
+
+    .dragged-image {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container" id="app">
+    <div class="list">
+      <div class="list_item" v-for="(item, index) in lists" :key="index">
+        <div class="list_item_label" :style="{'backgroundColor': item.bgColor}">
+          {{item.title}}
+        </div>
+        <div 
+          class="list_item_content" 
+          :class="{ 'drag-over': dragOverIndex === index }"
+          @dragover.prevent="onDragOver(index)"
+          @dragleave="onDragLeave"
+          @drop="onDrop($event, index)"
+        >
+          <img 
+            v-for="(img, imgIndex) in item.images" 
+            :key="imgIndex" 
+            :src="img" 
+            class="dragged-image" 
+            alt=""
+            @click="removeImage(index, imgIndex)"
+          />
+        </div>
+      </div>
+    </div>
+    <div class="imgs">
+      <img 
+        v-for="(img, index) in availableImages" 
+        :key="index" 
+        :src="img" 
+        :draggable="true"
+        @dragstart="onDragStart($event, img)"
+        alt=""
+      />
+    </div>
+  </div>
+
+
+  <script>
+    new Vue({
+      el: '#app',
+      data() {
+        return {
+          lists: [{
+            title: '夯',
+            bgColor: '#FE0601',
+            images: []
+          }, {
+            title: '顶级',
+            bgColor: '#FDBD18',
+            images: []
+          }, {
+            title: '人上人',
+            bgColor: '#FEFE05',
+            images: []
+          }, {
+            title: 'NPC',
+            bgColor: '#FFF2CB',
+            images: []
+          }, {
+            title: '拉完了',
+            bgColor: '#E6E6E8',
+            images: []
+          }],
+          availableImages: [
+            './static/img1188.png',
+            './static/img1191.png',
+            './static/img1193.png',
+            './static/img1195.png',
+            './static/img1196.png',
+            './static/img1198.png',
+            './static/img1199.png',
+            './static/img1200.png',
+            './static/img1201.png',
+            './static/img1202.png',
+            './static/img1206.png',
+            './static/img1210.png',
+            './static/img1212.png'
+          ],
+          draggedImage: null,
+          dragOverIndex: -1
+        }
+      },
+      computed: {
+      },
+      methods: {
+        onDragStart(event, imgSrc) {
+          this.draggedImage = imgSrc;
+          event.dataTransfer.effectAllowed = 'copy';
+        },
+        onDragOver(index) {
+          this.dragOverIndex = index;
+        },
+        onDragLeave() {
+          this.dragOverIndex = -1;
+        },
+        onDrop(event, index) {
+          event.preventDefault();
+          this.dragOverIndex = -1;
+          if (this.draggedImage) {
+            this.lists[index].images.push(this.draggedImage);
+            this.draggedImage = null;
+          }
+        },
+        removeImage(listIndex, imgIndex) {
+          this.lists[listIndex].images.splice(imgIndex, 1);
+        }
+      }
+    })
+  </script>
+</body>
+
+</html>
