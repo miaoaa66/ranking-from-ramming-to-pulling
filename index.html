@@ -1,182 +1,998 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>从夯到拉排行</title>
-  <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script> -->
-  <script src="./static/vue.2.6.14.js"></script>
+  <script src="./static/vue.global.prod.js"></script>
+  <script src="./static/html2canvas.min.js"></script>
   <style>
     * {
       margin: 0;
       padding: 0;
+      box-sizing: border-box;
     }
 
-    .container {}
-
-    .list {}
-
-    .list_item {
-      display: flex;
-      border: 1px solid #ccc;
-      min-height: 100px;
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: #f0f2f5;
+      color: #222;
+      font-size: 14px;
     }
 
-    .list_item_label {
-      width: 200px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-right: 1px solid #ccc;
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 16px;
     }
 
-    .list_item_content {
-      flex: 1;
+    /* ---------- 工具栏 ---------- */
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
       display: flex;
       flex-wrap: wrap;
-      gap: 5px;
-      min-height: 90px;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .06);
     }
 
-    .list_item_content.drag-over {
-      background-color: #e8f4f8;
-      border: 2px dashed #4a90d9;
+    .toolbar-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-right: auto;
+      white-space: nowrap;
     }
 
-    .img {
+    .btn {
+      padding: 6px 12px;
+      font-size: 13px;
+      line-height: 1.4;
+      color: #333;
+      background: #fff;
+      border: 1px solid #d9d9d9;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+
+    .btn:hover:not(:disabled) {
+      background: #f5f5f5;
+      border-color: #bfbfbf;
+    }
+
+    .btn.active {
+      color: #fff;
+      background: #1677ff;
+      border-color: #1677ff;
+    }
+
+    .btn.active:hover:not(:disabled) {
+      color: #fff;
+      background: #0958d9;
+      border-color: #0958d9;
+    }
+
+    .btn.danger {
+      color: #d4380d;
+      border-color: #ffccc7;
+    }
+
+    .btn.danger:hover:not(:disabled) {
+      background: #fff2f0;
+    }
+
+    .btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    /* ---------- 分组 ---------- */
+    .tier-list {
+      display: flex;
+      flex-direction: column;
       gap: 10px;
     }
 
-    .imgs img {
+    .tier {
+      display: flex;
+      overflow: hidden;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .04);
+    }
+
+    .tier-label {
+      flex: 0 0 150px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+      font-size: 18px;
+      font-weight: 700;
+      text-align: center;
+      word-break: break-word;
+      border-right: 1px solid rgba(0, 0, 0, .08);
+    }
+
+    .tier-title-input {
+      width: 100%;
+      padding: 4px;
+      font: inherit;
+      color: inherit;
+      text-align: center;
+      background: rgba(255, 255, 255, .6);
+      border: 1px dashed rgba(0, 0, 0, .35);
+      border-radius: 4px;
+      outline: none;
+    }
+
+    .tier-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .tier-config {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      font-size: 13px;
+      background: #f7f8fa;
+      border-bottom: 1px solid #eee;
+    }
+
+    .tier-config label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #555;
+    }
+
+    .tier-config input[type="color"] {
+      width: 34px;
+      height: 26px;
+      padding: 0;
+      border: 1px solid #d9d9d9;
+      border-radius: 4px;
+      background: none;
+      cursor: pointer;
+    }
+
+    .mini {
+      padding: 4px 10px;
+      font-size: 12px;
+      color: #333;
+      background: #fff;
+      border: 1px solid #d9d9d9;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .mini:hover:not(:disabled) {
+      background: #f0f0f0;
+    }
+
+    .mini.danger {
+      color: #d4380d;
+      border-color: #ffccc7;
+    }
+
+    .mini:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .tier-content {
+      flex: 1;
+      display: flex;
+      flex-wrap: wrap;
+      align-content: flex-start;
+      align-items: center;
+      gap: 6px;
+      min-height: 116px;
+      padding: 8px;
+      transition: background .15s;
+    }
+
+    .tier-content.drag-over,
+    .pool.drag-over {
+      background: #e8f4f8;
+      box-shadow: inset 0 0 0 2px #4a90d9;
+    }
+
+    .add-tier-bar {
+      margin-top: 10px;
+    }
+
+    .add-tier-btn {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #1677ff;
+      background: #f0f7ff;
+      border: 1.5px dashed #91caff;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .add-tier-btn:hover {
+      color: #0958d9;
+      background: #e6f4ff;
+      border-color: #1677ff;
+    }
+
+    /* ---------- 图片 ---------- */
+    .thumb {
+      position: relative;
       width: 100px;
       height: 100px;
+      border-radius: 6px;
       cursor: move;
-      margin: 5px;
+      transition: opacity .15s;
     }
 
-    .imgs img:hover {
-      opacity: 0.7;
-    }
-
-    .dragged-image {
-      width: 100px;
-      height: 100px;
+    .thumb img {
+      display: block;
+      width: 100%;
+      height: 100%;
       object-fit: cover;
+      border-radius: 6px;
+      pointer-events: none;
+      -webkit-user-drag: none;
+      user-select: none;
+    }
+
+    .thumb:hover img {
+      opacity: .82;
+    }
+
+    .thumb.dragging {
+      opacity: .35;
+    }
+
+    /* 配置模式下图片不可拖拽 */
+    .app-root.editing .thumb {
+      cursor: not-allowed;
+    }
+
+    .thumb-del {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      font-size: 14px;
+      line-height: 1;
+      color: #fff;
+      background: #ff4d4f;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity .15s;
+    }
+
+    .thumb:hover .thumb-del {
+      opacity: 1;
+    }
+
+    .drop-indicator {
+      flex: 0 0 3px;
+      align-self: center;
+      width: 3px;
+      height: 100px;
+      background: #4a90d9;
+      border-radius: 2px;
+    }
+
+    .empty-hint {
+      width: 100%;
+      padding: 30px 0;
+      color: #bbb;
+      font-size: 13px;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    /* ---------- 素材区 ---------- */
+    .pool-wrap {
+      margin-top: 16px;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .04);
+    }
+
+    .pool-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      font-weight: 600;
+      border-bottom: 1px solid #eee;
+    }
+
+    .pool-count {
+      font-size: 12px;
+      font-weight: 400;
+      color: #888;
+    }
+
+    .pool-tip {
+      margin-left: auto;
+      font-size: 12px;
+      font-weight: 400;
+      color: #999;
+    }
+
+    .pool-tip.locked {
+      color: #d4380d;
+      font-weight: 500;
+    }
+
+    .pool {
+      display: flex;
+      flex-wrap: wrap;
+      align-content: flex-start;
+      align-items: center;
+      gap: 6px;
+      min-height: 124px;
+      padding: 10px;
+      border-radius: 0 0 10px 10px;
+      transition: background .15s;
+    }
+
+    /* ---------- 导出模式：隐藏交互控件 ---------- */
+    .exporting .toolbar,
+    .exporting .thumb-del,
+    .exporting .empty-hint,
+    .exporting .add-tier-bar,
+    .exporting .tier-config {
+      display: none !important;
+    }
+
+    /* ---------- 提示 ---------- */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      z-index: 999;
+      max-width: 80vw;
+      padding: 10px 18px;
+      color: #fff;
+      font-size: 14px;
+      background: rgba(0, 0, 0, .82);
+      border-radius: 6px;
+      transform: translateX(-50%);
+      animation: toast-in .2s ease;
+    }
+
+    @keyframes toast-in {
+      from {
+        opacity: 0;
+        transform: translate(-50%, 8px);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
     }
   </style>
 </head>
 
 <body>
-
   <div class="container" id="app">
-    <div class="list">
-      <div class="list_item" v-for="(item, index) in lists" :key="index">
-        <div class="list_item_label" :style="{'backgroundColor': item.bgColor}">
-          {{item.title}}
-        </div>
-        <div 
-          class="list_item_content" 
-          :class="{ 'drag-over': dragOverIndex === index }"
-          @dragover.prevent="onDragOver(index)"
-          @dragleave="onDragLeave"
-          @drop="onDrop($event, index)"
-        >
-          <img 
-            v-for="(img, imgIndex) in item.images" 
-            :key="imgIndex" 
-            :src="img" 
-            class="dragged-image" 
-            alt=""
-            @click="removeImage(index, imgIndex)"
-          />
+    <div class="app-root" ref="appRoot" :class="{ exporting: isExporting, editing: editing }">
+      <!-- 工具栏 -->
+      <div class="toolbar">
+        <div class="toolbar-title">从夯到拉排行</div>
+        <button class="btn" :class="{ active: editing }" @click="toggleEditing">
+          {{ editing ? '完成配置' : '配置模式' }}
+        </button>
+        <button class="btn" @click="triggerUpload">上传图片</button>
+        <button class="btn" @click="clearPool">清空素材</button>
+        <button class="btn" :disabled="!canExportImage" :title="canExportImage ? '' : '导出组件未加载'" @click="exportImage">
+          导出图片
+        </button>
+        <button class="btn" @click="exportConfig">导出配置</button>
+        <button class="btn" @click="triggerImport">导入配置</button>
+        <button class="btn danger" @click="doReset">重置</button>
+      </div>
+
+      <input ref="fileInput" type="file" accept="image/*" multiple hidden @change="onFilesPicked">
+      <input ref="importInput" type="file" accept=".json,application/json" hidden @change="onConfigPicked">
+
+      <!-- 分组列表 -->
+      <div class="tier-list">
+        <div class="tier" v-for="(tier, ti) in tiers" :key="tier.id">
+          <div class="tier-label" :style="{ backgroundColor: tier.bgColor, color: labelTextColor(tier.bgColor) }">
+            <input v-if="editing" class="tier-title-input" v-model="tier.title"
+              @keydown.enter="$event.target.blur()">
+            <template v-else>{{ tier.title }}</template>
+          </div>
+          <div class="tier-body">
+            <div v-if="editing" class="tier-config">
+              <label>颜色 <input type="color" v-model="tier.bgColor"></label>
+              <button class="mini" :disabled="ti === 0" @click="moveTier(ti, -1)">上移</button>
+              <button class="mini" :disabled="ti === tiers.length - 1" @click="moveTier(ti, 1)">下移</button>
+              <button class="mini danger" @click="removeTier(ti)">删除分组</button>
+            </div>
+            <div class="tier-content" :class="{ 'drag-over': isDropZone(tier.id) }"
+              @dragover.prevent="onTierDragOver($event, tier)" @dragleave="onTierDragLeave($event, tier)"
+              @drop.prevent="onTierDrop($event, tier)">
+              <template v-for="(img, ii) in tier.images" :key="img.id">
+                <div v-if="isDropAt(tier.id, ii)" class="drop-indicator"></div>
+                <div class="thumb" :class="{ dragging: isDragging(img.id) }" :draggable="!editing"
+                  @dragstart="onImageDragStart($event, img, 'tier', tier.id)" @dragend="onDragEnd">
+                  <img :src="img.src" alt="">
+                  <button v-if="!editing" class="thumb-del" title="移出分组"
+                    @click.stop="removeFromTier(tier, ii)">×</button>
+                </div>
+              </template>
+              <div v-if="isDropAt(tier.id, tier.images.length)" class="drop-indicator"></div>
+              <div v-if="tier.images.length === 0" class="empty-hint">拖拽图片到此处</div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="imgs">
-      <img 
-        v-for="(img, index) in availableImages" 
-        :key="index" 
-        :src="img" 
-        :draggable="true"
-        @dragstart="onDragStart($event, img)"
-        alt=""
-      />
+
+      <div v-if="editing" class="add-tier-bar">
+        <button class="add-tier-btn" @click="addTier">+ 添加分组</button>
+      </div>
+
+      <!-- 素材区 -->
+      <div class="pool-wrap">
+        <div class="pool-header">
+          <span>素材区</span>
+          <span class="pool-count">{{ pool.length }} 张</span>
+          <span class="pool-tip" :class="{ locked: editing }">
+            {{ editing ? '配置模式下不可拖拽排行，点击「完成配置」后可继续' : '拖拽图片到上方分组 · 也可从桌面拖入图片文件' }}
+          </span>
+        </div>
+        <div class="pool" :class="{ 'drag-over': isDropZone('pool') }" @dragover.prevent="onPoolDragOver($event)"
+          @dragleave="onPoolDragLeave" @drop.prevent="onPoolDrop($event)">
+          <template v-for="(img, pi) in pool" :key="img.id">
+            <div v-if="isDropAt('pool', pi)" class="drop-indicator"></div>
+            <div class="thumb" :class="{ dragging: isDragging(img.id) }" :draggable="!editing"
+              @dragstart="onImageDragStart($event, img, 'pool', null)" @dragend="onDragEnd">
+              <img :src="img.src" alt="">
+              <button class="thumb-del" title="从素材区删除" @click.stop="removeFromPool(pi)">×</button>
+            </div>
+          </template>
+          <div v-if="isDropAt('pool', pool.length)" class="drop-indicator"></div>
+          <div v-if="pool.length === 0" class="empty-hint">点击「上传图片」或从桌面拖入图片文件</div>
+        </div>
+      </div>
+
+      <!-- 提示 -->
+      <div v-if="toast.show" class="toast">{{ toast.text }}</div>
     </div>
   </div>
 
-
   <script>
-    new Vue({
-      el: '#app',
+    var STORAGE_KEY = 'ranking-from-ramming-to-pulling:v1';
+    var DATA_VERSION = 1;
+    var MAX_IMAGE_SIZE = 480;
+    var _idSeq = 0;
+
+    function newId() {
+      _idSeq += 1;
+      return 'i' + Date.now().toString(36) + '_' + _idSeq.toString(36) + Math.random().toString(36).slice(2, 6);
+    }
+
+    function defaultTiers() {
+      return [
+        { id: newId(), title: '夯', bgColor: '#FE0601', images: [] },
+        { id: newId(), title: '顶级', bgColor: '#FDBD18', images: [] },
+        { id: newId(), title: '人上人', bgColor: '#FEFE05', images: [] },
+        { id: newId(), title: 'NPC', bgColor: '#FFF2CB', images: [] },
+        { id: newId(), title: '拉完了', bgColor: '#E6E6E8', images: [] }
+      ];
+    }
+
+    function defaultPool() {
+      return [
+        './imgs/img1188.png',
+        './imgs/img1191.png',
+        './imgs/img1193.png',
+        './imgs/img1195.png',
+        './imgs/img1196.png',
+        './imgs/img1198.png',
+        './imgs/img1199.png',
+        './imgs/img1200.png',
+        './imgs/img1201.png',
+        './imgs/img1202.png',
+        './imgs/img1206.png',
+        './imgs/img1210.png',
+        './imgs/img1212.png'
+      ].map(function (src) { return { id: newId(), src: src }; });
+    }
+
+    Vue.createApp({
       data() {
         return {
-          lists: [{
-            title: '夯',
-            bgColor: '#FE0601',
-            images: []
-          }, {
-            title: '顶级',
-            bgColor: '#FDBD18',
-            images: []
-          }, {
-            title: '人上人',
-            bgColor: '#FEFE05',
-            images: []
-          }, {
-            title: 'NPC',
-            bgColor: '#FFF2CB',
-            images: []
-          }, {
-            title: '拉完了',
-            bgColor: '#E6E6E8',
-            images: []
-          }],
-          availableImages: [
-            './imgs/img1188.png',
-            './imgs/img1191.png',
-            './imgs/img1193.png',
-            './imgs/img1195.png',
-            './imgs/img1196.png',
-            './imgs/img1198.png',
-            './imgs/img1199.png',
-            './imgs/img1200.png',
-            './imgs/img1201.png',
-            './imgs/img1202.png',
-            './imgs/img1206.png',
-            './imgs/img1210.png',
-            './imgs/img1212.png'
-          ],
-          draggedImage: null,
-          dragOverIndex: -1
-        }
+          tiers: defaultTiers(),
+          pool: defaultPool(),
+          editing: false,
+          isExporting: false,
+          dragState: null,
+          dropTarget: null,
+          toast: { show: false, text: '' },
+          saveTimer: null,
+          toastTimer: null
+        };
       },
       computed: {
+        canExportImage() {
+          return typeof window.html2canvas === 'function';
+        }
+      },
+      watch: {
+        tiers: { deep: true, handler: 'scheduleSave' },
+        pool: { deep: true, handler: 'scheduleSave' }
+      },
+      mounted() {
+        if (this.loadState()) {
+          this.showToast('已恢复上次的排行数据');
+        }
+        window.addEventListener('dragover', this.preventDefault, false);
+        window.addEventListener('drop', this.preventDefault, false);
       },
       methods: {
-        onDragStart(event, imgSrc) {
-          this.draggedImage = imgSrc;
-          event.dataTransfer.effectAllowed = 'copy';
+        /* ---------- 通用 ---------- */
+        preventDefault(e) {
+          e.preventDefault();
         },
-        onDragOver(index) {
-          this.dragOverIndex = index;
+        showToast(text) {
+          this.toast.text = text;
+          this.toast.show = true;
+          clearTimeout(this.toastTimer);
+          var self = this;
+          this.toastTimer = setTimeout(function () { self.toast.show = false; }, 2000);
         },
-        onDragLeave() {
-          this.dragOverIndex = -1;
+        downloadBlob(blob, filename) {
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
         },
-        onDrop(event, index) {
-          event.preventDefault();
-          this.dragOverIndex = -1;
-          if (this.draggedImage) {
-            this.lists[index].images.push(this.draggedImage);
-            this.draggedImage = null;
+        labelTextColor(bg) {
+          var m = /^#([0-9a-f]{6})$/i.exec(bg || '');
+          if (!m) return '#222222';
+          var n = parseInt(m[1], 16);
+          var r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+          var lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+          return lum > 0.6 ? '#222222' : '#ffffff';
+        },
+
+        /* ---------- 持久化 ---------- */
+        scheduleSave() {
+          clearTimeout(this.saveTimer);
+          var self = this;
+          this.saveTimer = setTimeout(function () {
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                version: DATA_VERSION,
+                tiers: self.tiers,
+                pool: self.pool
+              }));
+            } catch (err) {
+              self.showToast('本地存储空间不足，上传的图片本次会话有效，刷新后将丢失');
+            }
+          }, 300);
+        },
+        isValidState(s) {
+          return !!s && typeof s === 'object' && Array.isArray(s.tiers) && Array.isArray(s.pool);
+        },
+        applyState(s) {
+          this.tiers = s.tiers.map(function (t) {
+            return {
+              id: t && t.id ? String(t.id) : newId(),
+              title: t && t.title != null ? String(t.title) : '',
+              bgColor: t && /^#[0-9a-fA-F]{6}$/.test(t.bgColor) ? t.bgColor : '#DDDDDD',
+              images: Array.isArray(t && t.images)
+                ? t.images.filter(function (im) { return im && typeof im.src === 'string'; })
+                  .map(function (im) { return { id: im.id ? String(im.id) : newId(), src: im.src }; })
+                : []
+            };
+          });
+          this.pool = s.pool.filter(function (im) { return im && typeof im.src === 'string'; })
+            .map(function (im) { return { id: im.id ? String(im.id) : newId(), src: im.src }; });
+          if (this.tiers.length === 0) this.tiers = defaultTiers();
+        },
+        loadState() {
+          var raw = null;
+          try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) { return false; }
+          if (!raw) return false;
+          try {
+            var parsed = JSON.parse(raw);
+            if (!this.isValidState(parsed)) return false;
+            this.applyState(parsed);
+            return true;
+          } catch (e) {
+            return false;
           }
         },
-        removeImage(listIndex, imgIndex) {
-          this.lists[listIndex].images.splice(imgIndex, 1);
+        doReset() {
+          if (!window.confirm('确定要重置吗？当前所有分组与图片将被清空，恢复为默认内容。')) return;
+          try { localStorage.removeItem(STORAGE_KEY); } catch (e) { }
+          this.tiers = defaultTiers();
+          this.pool = defaultPool();
+          this.dragState = null;
+          this.dropTarget = null;
+          this.showToast('已重置为默认内容');
+        },
+        exportConfig() {
+          var data = JSON.stringify({
+            version: DATA_VERSION,
+            tiers: this.tiers,
+            pool: this.pool
+          }, null, 2);
+          this.downloadBlob(new Blob([data], { type: 'application/json' }), 'ranking-config.json');
+          this.showToast('配置已导出');
+        },
+        triggerImport() {
+          this.$refs.importInput.value = '';
+          this.$refs.importInput.click();
+        },
+        onConfigPicked(e) {
+          var file = e.target.files && e.target.files[0];
+          e.target.value = '';
+          if (!file) return;
+          var self = this;
+          var reader = new FileReader();
+          reader.onload = function () {
+            var parsed;
+            try {
+              parsed = JSON.parse(reader.result);
+            } catch (err) {
+              self.showToast('导入失败：JSON 格式错误');
+              return;
+            }
+            if (!self.isValidState(parsed)) {
+              self.showToast('导入失败：配置文件结构不正确');
+              return;
+            }
+            if (!window.confirm('导入将覆盖当前所有分组与图片，确定继续？')) return;
+            self.applyState(parsed);
+            self.showToast('配置导入成功');
+          };
+          reader.onerror = function () { self.showToast('导入失败：文件读取错误'); };
+          reader.readAsText(file);
+        },
+
+        /* ---------- 分组配置 ---------- */
+        toggleEditing() {
+          this.editing = !this.editing;
+          if (this.editing) {
+            this.dragState = null;
+            this.dropTarget = null;
+          }
+        },
+        addTier() {
+          this.tiers.push({ id: newId(), title: '新分组', bgColor: '#DDDDDD', images: [] });
+        },
+        moveTier(index, dir) {
+          var target = index + dir;
+          if (target < 0 || target >= this.tiers.length) return;
+          var arr = this.tiers;
+          var moved = arr.splice(index, 1)[0];
+          arr.splice(target, 0, moved);
+        },
+        removeTier(index) {
+          var tier = this.tiers[index];
+          if (!tier) return;
+          var n = tier.images.length;
+          var msg = n
+            ? '确定删除分组「' + tier.title + '」吗？该组 ' + n + ' 张图片将移回素材区。'
+            : '确定删除分组「' + tier.title + '」吗？';
+          if (!window.confirm(msg)) return;
+          var self = this;
+          tier.images.forEach(function (im) {
+            self.pool.push({ id: newId(), src: im.src });
+          });
+          this.tiers.splice(index, 1);
+        },
+
+        /* ---------- 图片管理 ---------- */
+        triggerUpload() {
+          this.$refs.fileInput.value = '';
+          this.$refs.fileInput.click();
+        },
+        onFilesPicked(e) {
+          var files = this.extractImageFiles(e.target.files);
+          e.target.value = '';
+          this.addFiles(files);
+        },
+        extractImageFiles(list) {
+          return Array.prototype.slice.call(list || []).filter(function (f) {
+            return f && f.type && f.type.indexOf('image/') === 0;
+          });
+        },
+        hasFiles(e) {
+          var dt = e.dataTransfer;
+          if (!dt || !dt.types) return false;
+          return Array.prototype.indexOf.call(dt.types, 'Files') !== -1;
+        },
+        addFiles(files) {
+          if (!files.length) {
+            this.showToast('未检测到图片文件');
+            return;
+          }
+          var self = this;
+          var pending = files.length;
+          var failed = 0;
+          files.forEach(function (file) {
+            self.compressImage(file).then(function (src) {
+              self.pool.push({ id: newId(), src: src });
+            }).catch(function () {
+              failed += 1;
+            }).then(function () {
+              pending -= 1;
+              if (pending === 0) {
+                if (failed) {
+                  self.showToast('已导入 ' + (files.length - failed) + ' 张，' + failed + ' 张失败');
+                } else {
+                  self.showToast('已导入 ' + files.length + ' 张图片');
+                }
+              }
+            });
+          });
+        },
+        compressImage(file) {
+          return new Promise(function (resolve, reject) {
+            var reader = new FileReader();
+            reader.onerror = function () { reject(new Error('read failed')); };
+            reader.onload = function () {
+              var img = new Image();
+              img.onerror = function () { reject(new Error('decode failed')); };
+              img.onload = function () {
+                var w = img.naturalWidth || img.width;
+                var h = img.naturalHeight || img.height;
+                var scale = Math.min(1, MAX_IMAGE_SIZE / Math.max(w, h));
+                w = Math.max(1, Math.round(w * scale));
+                h = Math.max(1, Math.round(h * scale));
+                var canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                var ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                var out = canvas.toDataURL('image/webp', 0.82);
+                if (!out || out.indexOf('data:image/webp') !== 0) {
+                  out = canvas.toDataURL('image/jpeg', 0.85);
+                }
+                resolve(out);
+              };
+              img.src = reader.result;
+            };
+            reader.readAsDataURL(file);
+          });
+        },
+        removeFromPool(index) {
+          this.pool.splice(index, 1);
+        },
+        removeFromTier(tier, index) {
+          tier.images.splice(index, 1);
+        },
+        clearPool() {
+          if (this.pool.length === 0) return;
+          if (!window.confirm('确定清空素材区吗？（分组内已放置的图片不受影响）')) return;
+          this.pool = [];
+          this.showToast('素材区已清空');
+        },
+
+        /* ---------- 拖拽 ---------- */
+        onImageDragStart(e, img, from, tierId) {
+          this.dragState = { imageId: img.id, src: img.src, from: from, tierId: tierId };
+          if (e.dataTransfer) {
+            e.dataTransfer.effectAllowed = 'copyMove';
+            try { e.dataTransfer.setData('text/plain', img.id); } catch (err) { }
+          }
+        },
+        onDragEnd() {
+          this.dragState = null;
+          this.dropTarget = null;
+        },
+        isDragging(id) {
+          return !!this.dragState && this.dragState.imageId === id;
+        },
+        isDropZone(zoneId) {
+          return !!this.dropTarget && this.dropTarget.tierId === zoneId;
+        },
+        isDropAt(zoneId, index) {
+          return !!this.dropTarget && this.dropTarget.tierId === zoneId && this.dropTarget.index === index;
+        },
+        computeDropIndex(containerEl, clientX, clientY) {
+          var nodes = Array.prototype.slice.call(containerEl.querySelectorAll('.thumb'));
+          for (var i = 0; i < nodes.length; i += 1) {
+            var r = nodes[i].getBoundingClientRect();
+            if (clientY < r.top) return i;
+            if (clientY <= r.bottom && clientX < r.left + r.width / 2) return i;
+          }
+          return nodes.length;
+        },
+        onTierDragOver(e, tier) {
+          if (this.editing || !this.dragState) return;
+          this.dropTarget = {
+            tierId: tier.id,
+            index: this.computeDropIndex(e.currentTarget, e.clientX, e.clientY)
+          };
+          if (e.dataTransfer) {
+            e.dataTransfer.dropEffect = this.dragState.from === 'pool' ? 'copy' : 'move';
+          }
+        },
+        onTierDragLeave(e, tier) {
+          var el = e.currentTarget;
+          if (el.contains(e.relatedTarget)) return;
+          if (this.dropTarget && this.dropTarget.tierId === tier.id) this.dropTarget = null;
+        },
+        onTierDrop(e, tier) {
+          if (this.editing || !this.dragState) return;
+          var index = this.computeDropIndex(e.currentTarget, e.clientX, e.clientY);
+          this.applyDrop(tier.id, index);
+          this.dragState = null;
+          this.dropTarget = null;
+        },
+        onPoolDragOver(e) {
+          if (this.editing) return;
+          if (this.dragState) {
+            this.dropTarget = {
+              tierId: 'pool',
+              index: this.computeDropIndex(e.currentTarget, e.clientX, e.clientY)
+            };
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+          } else if (this.hasFiles(e)) {
+            this.dropTarget = { tierId: 'pool', index: this.pool.length };
+          }
+        },
+        onPoolDragLeave(e) {
+          var el = e.currentTarget;
+          if (el.contains(e.relatedTarget)) return;
+          if (this.dropTarget && this.dropTarget.tierId === 'pool') this.dropTarget = null;
+        },
+        onPoolDrop(e) {
+          if (this.editing) return;
+          if (this.dragState) {
+            var index = this.computeDropIndex(e.currentTarget, e.clientX, e.clientY);
+            this.applyDrop('pool', index);
+            this.dragState = null;
+            this.dropTarget = null;
+            return;
+          }
+          var files = this.extractImageFiles(e.dataTransfer && e.dataTransfer.files);
+          this.dropTarget = null;
+          if (files.length) this.addFiles(files);
+        },
+        moveWithin(arr, from, to) {
+          if (from < 0 || from === to || from === to - 1) return;
+          var moved = arr.splice(from, 1)[0];
+          arr.splice(to > from ? to - 1 : to, 0, moved);
+        },
+        applyDrop(target, index) {
+          var ds = this.dragState;
+          if (!ds) return;
+
+          if (ds.from === 'pool') {
+            var src = null;
+            var si;
+            for (si = 0; si < this.pool.length; si += 1) {
+              if (this.pool[si].id === ds.imageId) { src = this.pool[si]; break; }
+            }
+            if (!src) return;
+            if (target === 'pool') {
+              this.moveWithin(this.pool, si, index);
+            } else {
+              var dstTier = this.findTier(target);
+              if (!dstTier) return;
+              var at = Math.max(0, Math.min(index, dstTier.images.length));
+              dstTier.images.splice(at, 0, { id: newId(), src: src.src });
+            }
+            return;
+          }
+
+          var srcTier = this.findTier(ds.tierId);
+          if (!srcTier) return;
+          var from = -1;
+          for (var k = 0; k < srcTier.images.length; k += 1) {
+            if (srcTier.images[k].id === ds.imageId) { from = k; break; }
+          }
+          if (from === -1) return;
+          var image = srcTier.images[from];
+
+          if (target === 'pool') {
+            srcTier.images.splice(from, 1);
+            this.pool.splice(Math.max(0, Math.min(index, this.pool.length)), 0, { id: newId(), src: image.src });
+            return;
+          }
+
+          var tier = this.findTier(target);
+          if (!tier) return;
+          if (tier.id === srcTier.id) {
+            this.moveWithin(tier.images, from, index);
+            return;
+          }
+          srcTier.images.splice(from, 1);
+          tier.images.splice(Math.max(0, Math.min(index, tier.images.length)), 0, { id: image.id, src: image.src });
+        },
+        findTier(id) {
+          for (var i = 0; i < this.tiers.length; i += 1) {
+            if (this.tiers[i].id === id) return this.tiers[i];
+          }
+          return null;
+        },
+
+        /* ---------- 导出图片 ---------- */
+        hasLocalFileImages() {
+          var isLocal = function (im) { return im.src.indexOf('data:') !== 0; };
+          if (this.pool.some(isLocal)) return true;
+          return this.tiers.some(function (t) { return t.images.some(isLocal); });
+        },
+        exportImage() {
+          if (!this.canExportImage) {
+            this.showToast('导出组件未加载，无法导出图片');
+            return;
+          }
+          if (location.protocol === 'file:' && this.hasLocalFileImages()) {
+            var ok = window.confirm(
+              '当前以本地文件方式（file://）打开，浏览器的安全限制可能导致导出的图片缺失或失败。\n' +
+              '建议改用本地服务器打开后再导出，例如在项目目录执行：python -m http.server 8000\n\n' +
+              '仍要继续尝试导出吗？'
+            );
+            if (!ok) return;
+          }
+          var self = this;
+          var wasEditing = this.editing;
+          this.editing = false;
+          this.isExporting = true;
+          this.dropTarget = null;
+          this.$nextTick(function () {
+            window.html2canvas(self.$refs.appRoot, {
+              backgroundColor: '#ffffff',
+              scale: 2,
+              useCORS: true,
+              logging: false
+            }).then(function (canvas) {
+              canvas.toBlob(function (blob) {
+                if (!blob) {
+                  self.showToast('导出失败，请重试');
+                  return;
+                }
+                self.downloadBlob(blob, '从夯到拉排行.png');
+                self.showToast('图片已导出');
+              }, 'image/png');
+            }).catch(function (err) {
+              self.showToast('导出失败：' + (err && err.message ? err.message : '未知错误'));
+            }).then(function () {
+              self.isExporting = false;
+              self.editing = wasEditing;
+            });
+          });
         }
       }
-    })
+    }).mount('#app');
   </script>
 </body>
 
