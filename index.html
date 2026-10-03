@@ -366,8 +366,22 @@
     .exporting .thumb-del,
     .exporting .empty-hint,
     .exporting .add-tier-bar,
-    .exporting .tier-config {
+    .exporting .tier-config,
+    .exporting .toast,
+    .exporting-ranking .toolbar,
+    .exporting-ranking .thumb-del,
+    .exporting-ranking .empty-hint,
+    .exporting-ranking .add-tier-bar,
+    .exporting-ranking .tier-config,
+    .exporting-ranking .toast,
+    .exporting-ranking .pool-wrap {
       display: none !important;
+    }
+
+    /* 只导出排行区域时，给分组列表补上留白 */
+    .exporting-ranking .tier-list {
+      padding: 16px;
+      background: #ffffff;
     }
 
     /* ---------- 提示 ---------- */
@@ -401,7 +415,8 @@
 
 <body>
   <div class="container" id="app">
-    <div class="app-root" ref="appRoot" :class="{ exporting: isExporting, editing: editing }">
+    <div class="app-root" ref="appRoot"
+      :class="{ exporting: exportMode === 'full', 'exporting-ranking': exportMode === 'ranking', editing: editing }">
       <!-- 工具栏 -->
       <div class="toolbar">
         <div class="toolbar-title">从夯到拉排行</div>
@@ -410,8 +425,13 @@
         </button>
         <button class="btn" @click="triggerUpload">上传图片</button>
         <button class="btn" @click="clearPool">清空素材</button>
-        <button class="btn" :disabled="!canExportImage" :title="canExportImage ? '' : '导出组件未加载'" @click="exportImage">
-          导出图片
+        <button class="btn" :disabled="!canExportImage" :title="canExportImage ? '只导出分组排行区域' : '导出组件未加载'"
+          @click="exportRankingImage">
+          导出排行图
+        </button>
+        <button class="btn" :disabled="!canExportImage" :title="canExportImage ? '导出分组排行与素材区' : '导出组件未加载'"
+          @click="exportFullImage">
+          导出完整图
         </button>
         <button class="btn" @click="exportConfig">导出配置</button>
         <button class="btn" @click="triggerImport">导入配置</button>
@@ -533,7 +553,7 @@
           tiers: defaultTiers(),
           pool: defaultPool(),
           editing: false,
-          isExporting: false,
+          exportMode: '',
           dragState: null,
           dropTarget: null,
           toast: { show: false, text: '' },
@@ -950,7 +970,13 @@
           if (this.pool.some(isLocal)) return true;
           return this.tiers.some(function (t) { return t.images.some(isLocal); });
         },
-        exportImage() {
+        exportRankingImage() {
+          this.doExport('ranking', '从夯到拉排行-排行图.png');
+        },
+        exportFullImage() {
+          this.doExport('full', '从夯到拉排行-完整图.png');
+        },
+        doExport(mode, filename) {
           if (!this.canExportImage) {
             this.showToast('导出组件未加载，无法导出图片');
             return;
@@ -966,7 +992,7 @@
           var self = this;
           var wasEditing = this.editing;
           this.editing = false;
-          this.isExporting = true;
+          this.exportMode = mode;
           this.dropTarget = null;
           this.$nextTick(function () {
             window.html2canvas(self.$refs.appRoot, {
@@ -980,13 +1006,13 @@
                   self.showToast('导出失败，请重试');
                   return;
                 }
-                self.downloadBlob(blob, '从夯到拉排行.png');
+                self.downloadBlob(blob, filename);
                 self.showToast('图片已导出');
               }, 'image/png');
             }).catch(function (err) {
               self.showToast('导出失败：' + (err && err.message ? err.message : '未知错误'));
             }).then(function () {
-              self.isExporting = false;
+              self.exportMode = '';
               self.editing = wasEditing;
             });
           });
